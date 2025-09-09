@@ -15,7 +15,15 @@ This is a comprehensive **Enhanced** Telegram bot for Port Said public transport
 - Added website integration capabilities for additional location information
 - Implemented real-time updates system for traffic and route status
 
-**NEW FEATURES (September 9, 2025):**
+**LATEST ENHANCEMENTS (September 9, 2025 - Session Update):**
+- 👥 **Customer Database System**: Complete user tracking and interaction analytics with admin interface
+- 🔄 **Fixed Navigation Issues**: Resolved all back button functionality across bot states
+- 🧠 **Enhanced Arabic NLP**: Improved understanding with place name aliases and colloquial expressions
+- 📋 **Smart Route Management**: Advanced sortable interface for stop ordering with UP/DOWN controls
+- 🚶 **Nearby Locations System**: Walking distance calculation with time estimates (🚶 200م ~ 3 دق)
+- 🎯 **Simplified User Interface**: Streamlined start menu focused on smart and traditional search
+
+**PREVIOUS FEATURES (September 9, 2025):**
 - 🏷️ **Location Classification System**: Distinguish between direct bus stops and nearby locations requiring walking
 - 🔄 **Multi-Transport Routing**: Connect multiple transportation routes for comprehensive journey planning
 - 📊 **Enhanced Database Models**: Added location_type, walking_distance, location_notes fields
