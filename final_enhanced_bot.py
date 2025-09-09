@@ -289,10 +289,23 @@ class NLPSearchSystem:
     def __init__(self):
         self.landmarks_index = self._build_landmarks_index()
         
-        # كلمات ربط عربية
-        self.from_keywords = ['من', 'من عند', 'بدءاً من', 'انطلاقاً من']
-        self.to_keywords = ['إلى', 'الى', 'لـ', 'ل', 'حتى', 'وصولاً إلى', 'باتجاه']
-        self.question_keywords = ['إزاي', 'ازاي', 'كيف', 'طريقة', 'أروح', 'اروح', 'أوصل', 'اوصل']
+        # كلمات ربط عربية محسنة
+        self.from_keywords = ['من', 'من عند', 'بدءاً من', 'انطلاقاً من', 'ابتداء من', 'جاي من', 'خارج من']
+        self.to_keywords = ['إلى', 'الى', 'لـ', 'ل', 'حتى', 'وصولاً إلى', 'باتجاه', 'عايز أروح', 'رايح', 'نازل']
+        self.question_keywords = ['إزاي', 'ازاي', 'كيف', 'طريقة', 'أروح', 'اروح', 'أوصل', 'اوصل', 'أقدر أروح', 'ممكن أروح']
+        
+        # أسماء مختصرة ودارجة للأماكن الشائعة
+        self.place_aliases = {
+            'المستشفى': ['المستشفى العام', 'مستشفى بورسعيد العام', 'مستشفى العام'],
+            'الجامعة': ['جامعة قناة السويس', 'جامعة السويس', 'الجامعه'],
+            'المحطة': ['محطة القطار', 'محطة السكة الحديد', 'محطه'],
+            'البنك': ['البنك الأهلي', 'الأهلي', 'بنك'],
+            'السوق': ['سوق الجمعة', 'السوق الشعبي', 'الاسواق'],
+            'المول': ['مول داونتاون', 'داونتاون', 'المركز التجاري'],
+            'النادي': ['نادي بورسعيد', 'النادى'],
+            'الكنيسة': ['الكنيسة الإنجيلية', 'كنيسة'],
+            'المسجد': ['المسجد الكبير', 'الجامع الكبير', 'مسجد']
+        }
     
     def _build_landmarks_index(self) -> Dict[str, Dict]:
         """بناء فهرس لجميع المعالم للبحث السريع"""
@@ -320,14 +333,32 @@ class NLPSearchSystem:
         """حساب درجة التشابه بين نصين"""
         return SequenceMatcher(None, text1.lower(), text2.lower()).ratio()
     
-    def find_best_match(self, query: str, min_score: float = 0.6) -> Optional[Dict]:
-        """البحث عن أفضل تطابق لمعلم معين"""
+    def find_best_match(self, query: str, min_score: float = 0.5) -> Optional[Dict]:
+        """البحث عن أفضل تطابق لمعلم معين - محسن للفهم الأذكى"""
         query = query.lower().strip()
         best_match = None
         best_score = min_score
         
+        # تنظيف النص من الكلمات الشائعة
+        stop_words = ['في', 'عند', 'قدام', 'جنب', 'قريب', 'من']
+        query_words = [word for word in query.split() if word not in stop_words]
+        cleaned_query = ' '.join(query_words)
+        
         for landmark_name, landmark_info in self.landmarks_index.items():
-            score = self.similarity_score(query, landmark_name)
+            # حساب التشابه مع النص الأصلي
+            score1 = self.similarity_score(query, landmark_name)
+            # حساب التشابه مع النص المنظف
+            score2 = self.similarity_score(cleaned_query, landmark_name)
+            # أخذ أعلى نتيجة
+            score = max(score1, score2)
+            
+            # بحث في الكلمات المفردة أيضاً
+            for word in query_words:
+                if len(word) > 2:  # تجاهل الكلمات القصيرة
+                    word_score = self.similarity_score(word, landmark_name)
+                    if word_score > 0.8:  # تطابق قوي مع كلمة واحدة
+                        score = max(score, word_score * 0.9)
+            
             if score > best_score:
                 best_score = score
                 best_match = {
@@ -338,11 +369,25 @@ class NLPSearchSystem:
         
         return best_match
     
+    def normalize_place_name(self, place_name: str) -> str:
+        """تطبيع اسم المكان باستخدام الأسماء المختصرة"""
+        place_name = place_name.strip()
+        
+        # البحث في الأسماء المختصرة
+        for standard_name, aliases in self.place_aliases.items():
+            for alias in aliases:
+                if self.similarity_score(place_name, alias) > 0.8:
+                    return standard_name
+            if self.similarity_score(place_name, standard_name) > 0.8:
+                return standard_name
+        
+        return place_name
+    
     def extract_locations_from_text(self, text: str) -> Tuple[Optional[str], Optional[str]]:
-        """استخراج نقطتي البداية والوجهة من النص"""
+        """استخراج نقطتي البداية والوجهة من النص - محسن"""
         text = text.replace('؟', '').replace('?', '').strip()
         
-        # البحث عن أنماط "من X إلى Y"
+        # البحث عن أنماط "من X إلى Y" مع التطبيع
         for from_word in self.from_keywords:
             for to_word in self.to_keywords:
                 if from_word in text and to_word in text:
@@ -350,8 +395,8 @@ class NLPSearchSystem:
                     if len(parts) > 1:
                         remaining = parts[1].split(to_word, 1)
                         if len(remaining) > 1:
-                            start_location = remaining[0].strip()
-                            end_location = remaining[1].strip()
+                            start_location = self.normalize_place_name(remaining[0].strip())
+                            end_location = self.normalize_place_name(remaining[1].strip())
                             return start_location, end_location
         
         # البحث عن أنماط "إزاي أروح X"
