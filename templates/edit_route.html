@@ -70,9 +70,14 @@
                     </div>
                     
                     <div id="selectedLocationsPreview" class="mb-3">
-                        <h6>الأماكن المختارة (بالترتيب):</h6>
-                        <div id="selectedLocationsList" class="border rounded p-2 bg-light">
+                        <h6>الأماكن المختارة (بالترتيب) - <span class="text-muted small">يمكنك إعادة ترتيبها</span>:</h6>
+                        <div id="selectedLocationsList" class="border rounded p-3 bg-light">
                             <!-- Selected locations will appear here -->
+                        </div>
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                💡 <strong>نصيحة:</strong> رتب الأماكن حسب خط السير الفعلي للحصول على أفضل نتائج البحث
+                            </small>
                         </div>
                     </div>
 
@@ -157,21 +162,99 @@
 
 {% block scripts %}
 <script>
-let selectedLocations = [];
+let selectedLocations = {{ current_locations | tojson }};
 
 function updateSelectedLocations() {
     const checkboxes = document.querySelectorAll('input[name="locations"]:checked');
-    selectedLocations = Array.from(checkboxes).map(cb => cb.value);
+    const newLocations = Array.from(checkboxes).map(cb => cb.value);
     
+    // أضف الأماكن الجديدة مع الاحتفاظ بالترتيب الحالي
+    newLocations.forEach(location => {
+        if (!selectedLocations.includes(location)) {
+            selectedLocations.push(location);
+        }
+    });
+    
+    // احذف الأماكن الغير محددة
+    selectedLocations = selectedLocations.filter(location => newLocations.includes(location));
+    
+    renderSelectedLocations();
+}
+
+function renderSelectedLocations() {
     const list = document.getElementById('selectedLocationsList');
     
     if (selectedLocations.length > 0) {
         list.innerHTML = selectedLocations.map((location, index) => 
-            `<span class="badge bg-primary me-2 mb-1">${index + 1}. ${location}</span>`
+            `<div class="d-flex align-items-center justify-content-between bg-white border rounded p-2 mb-2 location-item-sortable" data-location="${location}">
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-primary me-2">${index + 1}</span>
+                    <span class="location-name">${location}</span>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="moveLocationUp(${index})" ${index === 0 ? 'disabled' : ''}>
+                        <i class="bi bi-arrow-up"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="moveLocationDown(${index})" ${index === selectedLocations.length - 1 ? 'disabled' : ''}>
+                        <i class="bi bi-arrow-down"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeLocation('${location}')">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            </div>`
         ).join('');
+        
+        // تحديث الـ checkboxes المخفية للإرسال
+        updateHiddenInputs();
     } else {
         list.innerHTML = '<span class="text-muted">لم يتم اختيار أي أماكن</span>';
     }
+}
+
+function moveLocationUp(index) {
+    if (index > 0) {
+        [selectedLocations[index], selectedLocations[index - 1]] = [selectedLocations[index - 1], selectedLocations[index]];
+        renderSelectedLocations();
+    }
+}
+
+function moveLocationDown(index) {
+    if (index < selectedLocations.length - 1) {
+        [selectedLocations[index], selectedLocations[index + 1]] = [selectedLocations[index + 1], selectedLocations[index]];
+        renderSelectedLocations();
+    }
+}
+
+function removeLocation(location) {
+    const index = selectedLocations.indexOf(location);
+    if (index > -1) {
+        selectedLocations.splice(index, 1);
+        
+        // إلغاء تحديد الـ checkbox
+        const checkbox = document.querySelector(`input[value="${location}"]`);
+        if (checkbox) {
+            checkbox.checked = false;
+        }
+        
+        renderSelectedLocations();
+    }
+}
+
+function updateHiddenInputs() {
+    // إزالة جميع الـ inputs المخفية القديمة
+    const existingInputs = document.querySelectorAll('input[name="locations"][type="hidden"]');
+    existingInputs.forEach(input => input.remove());
+    
+    // إضافة inputs مخفية جديدة بالترتيب الصحيح
+    const form = document.getElementById('editRouteForm');
+    selectedLocations.forEach(location => {
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'locations';
+        hiddenInput.value = location;
+        form.appendChild(hiddenInput);
+    });
 }
 
 function selectAll() {
