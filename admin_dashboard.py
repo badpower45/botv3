@@ -78,6 +78,29 @@ class RouteConnection(db.Model):
     def __repr__(self):
         return f'<RouteConnection {self.from_route.name} → {self.to_route.name} at {self.connection_point}>'
 
+class User(db.Model):
+    """جدول العملاء والمستخدمين"""
+    id = db.Column(db.Integer, primary_key=True)
+    telegram_id = db.Column(db.BigInteger, unique=True, nullable=False)  # معرف تيليجرام الفريد
+    first_name = db.Column(db.String(100), nullable=False)  # الاسم الأول
+    last_name = db.Column(db.String(100), nullable=True)  # الاسم الأخير
+    username = db.Column(db.String(100), nullable=True)  # يوزر نيم تيليجرام
+    phone_number = db.Column(db.String(20), nullable=True)  # رقم الهاتف
+    is_active = db.Column(db.Boolean, default=True, nullable=False)  # نشط أم لا
+    first_interaction = db.Column(db.DateTime, default=datetime.utcnow)  # أول تفاعل
+    last_interaction = db.Column(db.DateTime, default=datetime.utcnow)  # آخر تفاعل
+    total_interactions = db.Column(db.Integer, default=1, nullable=False)  # إجمالي التفاعلات
+    preferred_language = db.Column(db.String(10), default='ar', nullable=False)  # اللغة المفضلة
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<User {self.first_name} (@{self.username})>'
+    
+    def update_interaction(self):
+        """تحديث آخر تفاعل وزيادة العداد"""
+        self.last_interaction = datetime.utcnow()
+        self.total_interactions += 1
+
 def init_database():
     """تهيئة قاعدة البيانات بالبيانات الحالية"""
     with app.app_context():
@@ -125,12 +148,16 @@ def index():
     routes_count = Route.query.count()
     locations_count = Location.query.count()
     connections_count = RouteConnection.query.count()
+    users_count = User.query.count()
+    active_users_count = User.query.filter_by(is_active=True).count()
     neighborhoods = db.session.query(Location.neighborhood.distinct()).all()
     
     return render_template('index.html', 
                          routes_count=routes_count,
                          locations_count=locations_count,
                          connections_count=connections_count,
+                         users_count=users_count,
+                         active_users_count=active_users_count,
                          neighborhoods_count=len(neighborhoods))
 
 @app.route('/routes')
@@ -416,6 +443,59 @@ def delete_connection(connection_id):
     
     flash(f'تم حذف الربط بنجاح!', 'success')
     return redirect(url_for('connections_list'))
+
+# --- صفحات إدارة العملاء ---
+@app.route('/users')
+def users_list():
+    """عرض جميع العملاء"""
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '', type=str)
+    
+    query = User.query
+    
+    if search:
+        query = query.filter(
+            db.or_(
+                User.first_name.contains(search),
+                User.last_name.contains(search),
+                User.username.contains(search)
+            )
+        )
+    
+    users = query.order_by(User.last_interaction.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+    
+    return render_template('users_list.html', users=users, search=search)
+
+@app.route('/users/<int:user_id>')
+def user_details(user_id):
+    """عرض تفاصيل عميل معين"""
+    user = User.query.get_or_404(user_id)
+    return render_template('user_details.html', user=user)
+
+@app.route('/users/toggle_status/<int:user_id>', methods=['POST'])
+def toggle_user_status(user_id):
+    """تفعيل/إلغاء تفعيل المستخدم"""
+    user = User.query.get_or_404(user_id)
+    user.is_active = not user.is_active
+    db.session.commit()
+    
+    status = "تم تفعيل" if user.is_active else "تم إلغاء تفعيل"
+    flash(f'{status} المستخدم "{user.first_name}" بنجاح!', 'success')
+    return redirect(url_for('users_list'))
+
+@app.route('/users/delete/<int:user_id>', methods=['POST'])
+def delete_user(user_id):
+    """حذف مستخدم"""
+    user = User.query.get_or_404(user_id)
+    user_name = user.first_name
+    
+    db.session.delete(user)
+    db.session.commit()
+    
+    flash(f'تم حذف المستخدم "{user_name}" بنجاح!', 'success')
+    return redirect(url_for('users_list'))
 
 @app.route('/api/update_bot')
 def update_bot_data():

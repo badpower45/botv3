@@ -22,6 +22,14 @@ from telegram.constants import ParseMode
 # --- Fix for imports when running from a different directory ---
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# --- استيراد نظام إدارة العملاء ---
+try:
+    from user_manager import user_manager
+    logger.info("تم تحميل نظام إدارة العملاء بنجاح")
+except ImportError:
+    logger.warning("لم يتم العثور على نظام إدارة العملاء")
+    user_manager = None
+
 # --- إعدادات الـ Logging ---
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", 
@@ -513,15 +521,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> States:
     user_name = user.first_name if user else "مستخدم"
     logger.info(f"User {user_name} (ID: {user.id}) started conversation.")
     
+    # تسجيل المستخدم في قاعدة البيانات
+    if user_manager and user:
+        try:
+            user_manager.register_or_update_user(user)
+        except Exception as e:
+            logger.error(f"خطأ في تسجيل المستخدم: {e}")
+    
     context.user_data.clear()
     
-    # بناء لوحة المفاتيح الرئيسية
+    # بناء لوحة المفاتيح الرئيسية المبسطة
     keyboard = [
         [InlineKeyboardButton("🚌 البحث التقليدي", callback_data="traditional_search")],
-        [InlineKeyboardButton("🔍 البحث الذكي (اكتب سؤالك)", callback_data="nlp_search")],
-        [InlineKeyboardButton("🗺️ عرض الخرائط", callback_data="maps_view")],
-        [InlineKeyboardButton("📊 تقارير المرور المباشرة", callback_data="live_reports")],
-        [InlineKeyboardButton("📝 أبلغ عن حالة مرور", callback_data="submit_report")]
+        [InlineKeyboardButton("🔍 البحث الذكي (اكتب سؤالك)", callback_data="nlp_search")]
     ]
     
     # إضافة أزرار الإدارة للمشرفين
@@ -531,13 +543,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> States:
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     welcome_text = f"""
-🚌 **أهلاً بك يا {user_name} في بوت مواصلات بورسعيد المطور!**
+🚌 **أهلاً بك يا {user_name} في بوت مواصلات بورسعيد!**
 
-الميزات الجديدة:
-🔸 بحث ذكي بالنص الحر ("إزاي أروح من A لـ B؟")
-🔸 تقارير مرور مباشرة من المستخدمين
-🔸 خرائط تفاعلية مع إحداثيات دقيقة
-🔸 نظام إدارة متقدم للمشرفين
+اختر طريقة البحث المناسبة لك:
+
+🔸 **البحث التقليدي**: اختيار الأماكن من القوائم
+🔸 **البحث الذكي**: اكتب سؤالك مباشرة ("إزاي أروح من المستشفى للجامعة؟")
 
 اختر ما تريد:
     """
