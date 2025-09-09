@@ -25,10 +25,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # --- استيراد نظام إدارة العملاء ---
 try:
     from user_manager import user_manager
-    logger.info("تم تحميل نظام إدارة العملاء بنجاح")
+    print("✅ تم تحميل نظام إدارة العملاء بنجاح")
+    user_manager_loaded = True
 except ImportError:
-    logger.warning("لم يتم العثور على نظام إدارة العملاء")
+    print("⚠️ لم يتم العثور على نظام إدارة العملاء")
     user_manager = None
+    user_manager_loaded = False
 
 # --- إعدادات الـ Logging ---
 logging.basicConfig(
