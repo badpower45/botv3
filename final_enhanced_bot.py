@@ -1126,11 +1126,12 @@ async def handle_page_navigation(update: Update, context: ContextTypes.DEFAULT_T
     return States.MAIN_MENU
 
 async def handle_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE) -> States:
-    """معالجة التنقل للخلف"""
+    """معالجة التنقل للخلف - محسنة لتعمل مع كل أزرار الرجوع"""
     query = update.callback_query
     await query.answer()
     
     if query.data == "back_to_start":
+        # العودة لاختيار حي البداية
         neighborhoods = list(neighborhood_data.keys())
         keyboard = build_keyboard(neighborhoods, "start_neighborhood")
         await query.edit_message_text(
@@ -1140,8 +1141,75 @@ async def handle_navigation(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         )
         return States.SELECTING_START_NEIGHBORHOOD
     
-    # المزيد من دوال التنقل يمكن إضافتها هنا...
+    elif query.data == "back_to_start_neighborhood":
+        # العودة لاختيار حي البداية من اختيار التصنيف
+        neighborhoods = list(neighborhood_data.keys())
+        keyboard = build_keyboard(neighborhoods, "start_neighborhood")
+        await query.edit_message_text(
+            "🏘️ **اختر حي البداية:**",
+            reply_markup=keyboard,
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return States.SELECTING_START_NEIGHBORHOOD
     
+    elif query.data == "back_to_start_category":
+        # العودة لاختيار تصنيف البداية من اختيار المعلم
+        start_neighborhood = context.user_data.get('start_neighborhood')
+        if start_neighborhood and start_neighborhood in neighborhood_data:
+            categories = list(neighborhood_data[start_neighborhood].keys())
+            keyboard = build_keyboard(categories, "start_category", back_target="start_neighborhood")
+            await query.edit_message_text(
+                f"📍 **اختر التصنيف في {start_neighborhood}:**",
+                reply_markup=keyboard,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return States.SELECTING_START_CATEGORY
+        else:
+            return await start(update, context)
+    
+    elif query.data == "back_to_start_landmark":
+        # العودة لاختيار معلم البداية من اختيار حي النهاية
+        start_neighborhood = context.user_data.get('start_neighborhood')
+        start_category = context.user_data.get('start_category')
+        if start_neighborhood and start_category:
+            landmarks = neighborhood_data[start_neighborhood][start_category]
+            keyboard = build_keyboard(landmarks, "start_landmark", back_target="start_category")
+            await query.edit_message_text(
+                f"🎯 **اختر المكان في {start_category} - {start_neighborhood}:**",
+                reply_markup=keyboard,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return States.SELECTING_START_LANDMARK
+        else:
+            return await start(update, context)
+    
+    elif query.data == "back_to_end_neighborhood":
+        # العودة لاختيار حي النهاية من اختيار التصنيف
+        neighborhoods = list(neighborhood_data.keys())
+        keyboard = build_keyboard(neighborhoods, "end_neighborhood")
+        await query.edit_message_text(
+            "🏘️ **اختر حي الوجهة:**",
+            reply_markup=keyboard,
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return States.SELECTING_END_NEIGHBORHOOD
+    
+    elif query.data == "back_to_end_category":
+        # العودة لاختيار تصنيف النهاية من اختيار المعلم
+        end_neighborhood = context.user_data.get('end_neighborhood')
+        if end_neighborhood and end_neighborhood in neighborhood_data:
+            categories = list(neighborhood_data[end_neighborhood].keys())
+            keyboard = build_keyboard(categories, "end_category", back_target="end_neighborhood")
+            await query.edit_message_text(
+                f"📍 **اختر التصنيف في {end_neighborhood}:**",
+                reply_markup=keyboard,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            return States.SELECTING_END_CATEGORY
+        else:
+            return await start(update, context)
+    
+    # إذا لم تتطابق أي حالة، العودة للقائمة الرئيسية
     return await start(update, context)
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
