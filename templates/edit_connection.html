@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}تعديل ربط المواصلات - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">تعديل ربط المواصلات</h1>
+    <a href="{{ url_for('connections_list') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> العودة للروابط
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <form method="POST">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">تعديل معلومات الربط</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="from_route_id" class="form-label">من الخط *</label>
+                            <select class="form-select" id="from_route_id" name="from_route_id" required>
+                                {% for route in routes %}
+                                <option value="{{ route.id }}" 
+                                        {% if route.id == connection.from_route_id %}selected{% endif %}>
+                                    {{ route.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="to_route_id" class="form-label">إلى الخط *</label>
+                            <select class="form-select" id="to_route_id" name="to_route_id" required>
+                                {% for route in routes %}
+                                <option value="{{ route.id }}" 
+                                        {% if route.id == connection.to_route_id %}selected{% endif %}>
+                                    {{ route.name }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label for="connection_point" class="form-label">نقطة التحويل *</label>
+                            <input type="text" class="form-control" id="connection_point" name="connection_point" 
+                                   value="{{ connection.connection_point }}" required
+                                   placeholder="مثال: ميدان الشهداء أو محطة القطار">
+                            <div class="form-text">المكان الذي يتم فيه التحويل من مواصلة للأخرى</div>
+                        </div>
+                        
+                        <div class="col-md-4 mb-3">
+                            <label for="walking_time" class="form-label">وقت المشي (دقائق)</label>
+                            <input type="number" class="form-control" id="walking_time" name="walking_time" 
+                                   value="{{ connection.walking_time }}" min="1" max="30" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="connection_notes" class="form-label">ملاحظات إضافية (اختياري)</label>
+                        <textarea class="form-control" id="connection_notes" name="connection_notes" rows="3"
+                                  placeholder="مثال: المحطتان متقابلتان، أو تحتاج عبور الشارع">{{ connection.connection_notes or '' }}</textarea>
+                        <div class="form-text">إضافة تفاصيل مفيدة حول نقطة التحويل</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-lg"></i> حفظ التعديلات
+                </button>
+                <a href="{{ url_for('connections_list') }}" class="btn btn-secondary">
+                    <i class="bi bi-x-lg"></i> إلغاء
+                </a>
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                    <i class="bi bi-trash"></i> حذف الربط
+                </button>
+            </div>
+        </form>
+
+        <!-- نموذج حذف مخفي -->
+        <form id="deleteForm" method="POST" action="{{ url_for('delete_connection', connection_id=connection.id) }}" style="display: none;">
+        </form>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-info-circle"></i> معلومات الربط الحالي
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <strong>من:</strong> {{ connection.from_route.name }}<br>
+                    <small class="text-muted">{{ connection.from_route.start_area }} → {{ connection.from_route.end_area }}</small>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>إلى:</strong> {{ connection.to_route.name }}<br>
+                    <small class="text-muted">{{ connection.to_route.start_area }} → {{ connection.to_route.end_area }}</small>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>نقطة التحويل:</strong> {{ connection.connection_point }}
+                </div>
+                
+                <div class="mb-3">
+                    <strong>وقت المشي:</strong> {{ connection.walking_time }} دقيقة
+                </div>
+                
+                {% if connection.connection_notes %}
+                <div class="mb-3">
+                    <strong>الملاحظات:</strong><br>
+                    <small>{{ connection.connection_notes }}</small>
+                </div>
+                {% endif %}
+                
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-calendar"></i>
+                    <small><strong>تاريخ الإضافة:</strong><br>{{ connection.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> تحذير
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted">
+                    حذف هذا الربط سيؤدي إلى عدم قدرة البوت على اقتراح مسارات تتضمن التحويل بين هذين الخطين.
+                    تأكد من أنك تريد حذف الربط فعلاً.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// منع اختيار نفس الخط مرتين
+document.getElementById('from_route_id').addEventListener('change', function() {
+    const toRouteSelect = document.getElementById('to_route_id');
+    const selectedValue = this.value;
+    
+    // إعادة تفعيل جميع الخيارات
+    Array.from(toRouteSelect.options).forEach(option => {
+        option.disabled = false;
+    });
+    
+    // تعطيل الخط المختار
+    if (selectedValue) {
+        Array.from(toRouteSelect.options).forEach(option => {
+            if (option.value === selectedValue) {
+                option.disabled = true;
+            }
+        });
+        
+        // إذا كان الخط المختار في "إلى" هو نفس الخط، قم بإلغاء التحديد
+        if (toRouteSelect.value === selectedValue) {
+            toRouteSelect.value = '';
+        }
+    }
+});
+
+document.getElementById('to_route_id').addEventListener('change', function() {
+    const fromRouteSelect = document.getElementById('from_route_id');
+    const selectedValue = this.value;
+    
+    // إعادة تفعيل جميع الخيارات
+    Array.from(fromRouteSelect.options).forEach(option => {
+        option.disabled = false;
+    });
+    
+    // تعطيل الخط المختار
+    if (selectedValue) {
+        Array.from(fromRouteSelect.options).forEach(option => {
+            if (option.value === selectedValue) {
+                option.disabled = true;
+            }
+        });
+        
+        // إذا كان الخط المختار في "من" هو نفس الخط، قم بإلغاء التحديد
+        if (fromRouteSelect.value === selectedValue) {
+            fromRouteSelect.value = '';
+        }
+    }
+});
+
+function confirmDelete() {
+    if (confirm('هل أنت متأكد من حذف هذا الربط؟ هذا الإجراء لا يمكن التراجع عنه!')) {
+        document.getElementById('deleteForm').submit();
+    }
+}
+</script>
+{% endblock %}
