@@ -284,14 +284,18 @@ class NLPSearchSystem:
             message += f"{i}. **{route['name']}**\n"
             message += f"   🚏 من: {start_loc['name']}"
             
-            # إضافة معلومات التصنيف
+            # إضافة معلومات التصنيف مع تقدير زمني
             if start_loc['location_type'] == 'nearby':
-                message += f" (يحتاج مشي {start_loc['walking_distance']} متر)"
+                distance = start_loc['walking_distance']
+                walking_time = max(1, round(distance / 80))  # تقريباً 80 متر في الدقيقة
+                message += f" (🚶 مشي {distance}م ~ {walking_time} دق)"
             
             message += f"\n   🛑 إلى: {end_loc['name']}"
             
             if end_loc['location_type'] == 'nearby':
-                message += f" (يحتاج مشي {end_loc['walking_distance']} متر)"
+                distance = end_loc['walking_distance']
+                walking_time = max(1, round(distance / 80))  # تقريباً 80 متر في الدقيقة
+                message += f" (🚶 مشي {distance}م ~ {walking_time} دق)"
             
             message += f"\n   💰 التعريفة: {route['fare']} جنيه\n"
             
@@ -330,7 +334,9 @@ class NLPSearchSystem:
             message += f"   🚏 اركب من: {start_loc['name']}"
             
             if start_loc['location_type'] == 'nearby':
-                message += f" (مشي {start_loc['walking_distance']}م)"
+                distance = start_loc['walking_distance']
+                walking_time = max(1, round(distance / 80))
+                message += f" (🚶 {distance}م ~ {walking_time}د)"
             
             message += f"\n   🔄 انزل عند: {connection['connection_point']}\n"
             message += f"   🚶 امش {connection['walking_time']} دقائق للوصول للخط التالي\n"
