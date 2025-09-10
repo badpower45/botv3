@@ -9,7 +9,7 @@ import json
 def get_routes_from_db():
     """قراءة جميع الخطوط من قاعدة البيانات"""
     try:
-        conn = sqlite3.connect('admin_bot.db')
+        conn = sqlite3.connect('instance/admin_bot.db')
         cursor = conn.cursor()
         
         cursor.execute("SELECT name, fare, start_area, end_area, key_points, notes FROM route")
@@ -42,7 +42,7 @@ def get_routes_from_db():
 def get_neighborhoods_from_db():
     """قراءة جميع الأحياء والأماكن من قاعدة البيانات"""
     try:
-        conn = sqlite3.connect('admin_bot.db')
+        conn = sqlite3.connect('instance/admin_bot.db')
         cursor = conn.cursor()
         
         cursor.execute("SELECT neighborhood, category, name FROM location ORDER BY neighborhood, category, name")
@@ -69,7 +69,7 @@ def get_neighborhoods_from_db():
 def search_locations_by_name(location_name: str, limit: int = 10):
     """البحث عن الأماكن بالاسم مع معلومات التصنيف"""
     try:
-        conn = sqlite3.connect('admin_bot.db')
+        conn = sqlite3.connect('instance/admin_bot.db')
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -117,7 +117,7 @@ def search_locations_by_name(location_name: str, limit: int = 10):
 def get_routes_serving_location(location_name: str):
     """الحصول على الخطوط التي تخدم مكان معين"""
     try:
-        conn = sqlite3.connect('admin_bot.db')
+        conn = sqlite3.connect('instance/admin_bot.db')
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
@@ -158,7 +158,7 @@ def get_routes_serving_location(location_name: str):
 def find_route_connections(from_route_id: int, to_route_id: int):
     """البحث عن الروابط بين خطين"""
     try:
-        conn = sqlite3.connect('admin_bot.db')
+        conn = sqlite3.connect('instance/admin_bot.db')
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
