@@ -18,14 +18,21 @@ except ImportError:
     exit()
 
 try:
-    # تأكد من أن data.py يحتوي على الهيكل الجديد لـ neighborhood_data
-    from data import routes_data, neighborhood_data
+    # Try to import the dynamic data first
+    from data_dynamic import routes_data, neighborhood_data
+    print("INFO: Loaded data from data_dynamic.py")
 except ImportError:
-    print("!!! خطأ فادح: لم يتم العثور على ملف 'data.py' أو المتغيرات 'routes_data' و 'neighborhood_data' بداخله.")
-    print("!!! تأكد من إنشاء ملف 'data.py' في نفس المجلد ووضع هياكل البيانات الصحيحة فيه (بالهيكل الجديد).")
-    exit()
+    print("WARNING: Could not import from data_dynamic.py. Falling back to data.py")
+    try:
+        # Fallback to the static data file
+        from data import routes_data, neighborhood_data
+        print("INFO: Loaded data from data.py")
+    except ImportError:
+        print("!!! FATAL ERROR: Could not find data.py or the variables 'routes_data' and 'neighborhood_data' within it.")
+        print("!!! Please ensure 'data.py' exists in the same directory with the correct data structures.")
+        exit()
 except Exception as e:
-    print(f"!!! خطأ فادح أثناء استيراد البيانات من data.py: {e}")
+    print(f"!!! FATAL ERROR while importing data: {e}")
     exit()
 
 
