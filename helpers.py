@@ -51,53 +51,91 @@ def build_keyboard(items: List, prefix: str, back_target: Optional[str] = None) 
 
 def find_route_logic(start_landmark: str, end_landmark: str, routes_data: List[Dict]) -> str:
     """
-    البحث عن أفضل مسار بين معلمين
+    البحث عن أفضل مسار بين معلمين - محسن مع دعم الأماكن القريبة
     """
     
     # البحث عن المسارات المباشرة
     direct_routes = []
-    transfer_routes = []
+    nearby_routes = []  # للأماكن القريبة
+    
+    # تحسين البحث - استخدام مطابقة أفضل
+    def find_location_in_route(location: str, route_points: List[str]) -> List[int]:
+        """البحث عن مكان في نقاط الخط مع مطابقة محسنة"""
+        indices = []
+        location_clean = location.lower().strip()
+        
+        for i, point in enumerate(route_points):
+            if isinstance(point, str):
+                point_clean = point.lower().strip()
+                # مطابقة دقيقة أولاً
+                if location_clean == point_clean:
+                    indices.append((i, 'exact'))
+                # مطابقة جزئية
+                elif location_clean in point_clean or point_clean in location_clean:
+                    indices.append((i, 'partial'))
+                # مطابقة بالكلمات المفتاحية
+                elif any(word in point_clean for word in location_clean.split() if len(word) > 2):
+                    indices.append((i, 'keyword'))
+        
+        return indices
     
     for route in routes_data:
         key_points = route.get('keyPoints', [])
         if not key_points:
             continue
             
-        # البحث عن النقاط في المسار (مطابقة جزئية)
-        start_indices = []
-        end_indices = []
+        # البحث المحسن عن النقاط
+        start_matches = find_location_in_route(start_landmark, key_points)
+        end_matches = find_location_in_route(end_landmark, key_points)
         
-        for i, point in enumerate(key_points):
-            if isinstance(point, str):
-                point_lower = point.lower()
-                if start_landmark.lower() in point_lower:
-                    start_indices.append(i)
-                if end_landmark.lower() in point_lower:
-                    end_indices.append(i)
-        
-        if start_indices and end_indices:
+        if start_matches and end_matches:
             # التحقق من الترتيب الصحيح
-            valid_sequence = any(s_idx < e_idx for s_idx in start_indices for e_idx in end_indices)
-            if valid_sequence:
+            valid_routes = []
+            for start_idx, start_type in start_matches:
+                for end_idx, end_type in end_matches:
+                    if start_idx < end_idx:
+                        valid_routes.append({
+                            'start_idx': start_idx,
+                            'end_idx': end_idx,
+                            'start_type': start_type,
+                            'end_type': end_type,
+                            'start_point': key_points[start_idx],
+                            'end_point': key_points[end_idx]
+                        })
+            
+            if valid_routes:
+                # ترتيب حسب دقة المطابقة
+                priority_order = {'exact': 3, 'partial': 2, 'keyword': 1}
+                valid_routes.sort(key=lambda x: priority_order.get(x['start_type'], 0) + priority_order.get(x['end_type'], 0), reverse=True)
+                
                 direct_routes.append({
                     'route': route,
-                    'start_points': [key_points[i] for i in start_indices],
-                    'end_points': [key_points[i] for i in end_indices]
+                    'matches': valid_routes
                 })
     
     if direct_routes:
         result = "🚌 **تم العثور على مسارات مباشرة:**\n\n"
         for i, route_info in enumerate(direct_routes, 1):
             route = route_info['route']
+            best_match = route_info['matches'][0]  # أفضل مطابقة
+            
             result += f"{i}. **{route.get('routeName', 'خط غير محدد')}**\n"
-            result += f"   🚏 نقاط الركوب: {', '.join(route_info['start_points'])}\n"
-            result += f"   🛑 نقاط النزول: {', '.join(route_info['end_points'])}\n"
+            result += f"   🚏 نقطة الركوب: {best_match['start_point']}\n"
+            result += f"   🛑 نقطة النزول: {best_match['end_point']}\n"
             result += f"   💰 التعريفة: {route.get('fare', 'غير محددة')}\n"
+            
+            # إضافة معلومات الأماكن القريبة إذا كانت المطابقة جزئية
+            if best_match['start_type'] != 'exact':
+                result += f"   🚶 المكان قريب من: {best_match['start_point']} (5 دقائق مشي تقريباً)\n"
+            if best_match['end_type'] != 'exact':
+                result += f"   🚶 الوجهة قريبة من: {best_match['end_point']} (5 دقائق مشي تقريباً)\n"
+            
             if route.get('notes'):
                 result += f"   📝 ملاحظات: {route.get('notes')}\n"
             result += "\n"
         
-        result += "💡 **نصيحة:** تأكد من السائق للتأكيد من نقاط الركوب والنزول الصحيحة."
+        result += "💡 **نصيحة:** تأكد من السائق للتأكيد من نقاط الركوب والنزول الصحيحة.\n"
+        result += "🚶 **للأماكن القريبة:** المشي لمدة 5 دقائق تقريباً."
         return result
     
     else:

@@ -59,7 +59,16 @@ except ValueError as e:
     exit(1)
 
 try:
-    from data import routes_data, neighborhood_data
+    # محاولة تحميل البيانات المحدثة من قاعدة البيانات أولاً
+    try:
+        from data_dynamic import routes_data, neighborhood_data
+        if routes_data and neighborhood_data:
+            logger.info(f"✅ تم تحميل البيانات المحدثة: {len(routes_data)} خط، {len(neighborhood_data)} حي")
+        else:
+            raise ImportError("البيانات المحدثة فارغة")
+    except (ImportError, AttributeError):
+        logger.warning("⚠️ البيانات المحدثة غير متوفرة، استخدام البيانات الثابتة")
+        from data import routes_data, neighborhood_data
     
     if not routes_data or not isinstance(routes_data, list):
         logger.error("routes_data is empty or not a list")
@@ -455,7 +464,7 @@ nlp_system = NLPSearchSystem()
 # ===== الدوال المساعدة =====
 
 def build_keyboard(items: List, prefix: str, back_target: Optional[str] = None, page: int = 0, items_per_page: int = 8) -> InlineKeyboardMarkup:
-    """بناء لوحة المفاتيح مع تقسيم الصفحات"""
+    """بناء لوحة المفاتيح مع تقسيم الصفحات محسن"""
     keyboard = []
     row = []
     max_per_row = 2
@@ -478,11 +487,11 @@ def build_keyboard(items: List, prefix: str, back_target: Optional[str] = None, 
             
         if item_text and callback_identifier:
             # تقصير البيانات لتجنب خطأ Telegram
-            callback_identifier = callback_identifier[:30] if len(callback_identifier) > 30 else callback_identifier
+            callback_identifier = callback_identifier[:25] if len(callback_identifier) > 25 else callback_identifier
             callback_data_str = f"{prefix}:{callback_identifier}"
             
             # التأكد من أن البيانات لا تتجاوز 64 بايت
-            if len(callback_data_str.encode('utf-8')) <= 64:
+            if len(callback_data_str.encode('utf-8')) <= 60:  # ترك مساحة أمان
                 row.append(InlineKeyboardButton(item_text, callback_data=callback_data_str))
                 
                 if len(row) == max_per_row:
@@ -506,14 +515,15 @@ def build_keyboard(items: List, prefix: str, back_target: Optional[str] = None, 
         
         keyboard.append(nav_buttons)
     
-    # إضافة أزرار التنقل العامة
-    nav_buttons = []
+    # إضافة أزرار التنقل العامة (في صف منفصل)
+    nav_row = []
     if back_target:
-        nav_buttons.append(InlineKeyboardButton("⬅️ رجوع", callback_data=f"back_to_{back_target}"))
-    nav_buttons.append(InlineKeyboardButton("🏠 القائمة الرئيسية", callback_data="main_menu"))
-    nav_buttons.append(InlineKeyboardButton("❌ إلغاء", callback_data="cancel_action"))
+        nav_row.append(InlineKeyboardButton("⬅️ رجوع", callback_data=f"back_to_{back_target}"))
+    nav_row.append(InlineKeyboardButton("🏠 الرئيسية", callback_data="main_menu"))
     
-    keyboard.append(nav_buttons)
+    if nav_row:
+        keyboard.append(nav_row)
+    
     return InlineKeyboardMarkup(keyboard)
 
 def find_route_logic(start_landmark: str, end_landmark: str, routes: List[Dict]) -> str:
