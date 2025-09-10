@@ -190,6 +190,13 @@ def add_route():
         db.session.add(new_route)
         db.session.commit()
         
+        # تحديث بيانات البوت تلقائياً
+        try:
+            update_bot_data()
+            print("✅ تم تحديث بيانات البوت تلقائياً (إضافة)")
+        except Exception as e:
+            print(f"❌ خطأ في التحديث التلقائي: {e}")
+        
         flash(f'تم إضافة الخط "{name}" بنجاح!', 'success')
         return redirect(url_for('routes_list'))
     
@@ -298,6 +305,13 @@ def edit_route(route_id):
         route.notes = request.form.get('notes', '')
         
         db.session.commit()
+        
+        # تحديث بيانات البوت تلقائياً
+        try:
+            update_bot_data()
+            print("✅ تم تحديث بيانات البوت تلقائياً")
+        except Exception as e:
+            print(f"❌ خطأ في التحديث التلقائي: {e}")
         
         flash(f'تم تحديث الخط "{route.name}" بنجاح!', 'success')
         return redirect(url_for('routes_list'))
