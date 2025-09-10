@@ -505,13 +505,13 @@ def build_keyboard(items: List, prefix: str, back_target: Optional[str] = None, 
     if total_pages > 1:
         nav_buttons = []
         if page > 0:
-            nav_buttons.append(InlineKeyboardButton("⬅️ السابق", callback_data=f'{prefix}_page:{page-1}'))
+            nav_buttons.append(InlineKeyboardButton("⬅️ السابق", callback_data=f'{prefix}_page_{page-1}'))
         
         # عرض رقم الصفحة
         nav_buttons.append(InlineKeyboardButton(f"📄 {page+1}/{total_pages}", callback_data='current_page'))
         
         if page < total_pages - 1:
-            nav_buttons.append(InlineKeyboardButton("➡️ التالي", callback_data=f'{prefix}_page:{page+1}'))
+            nav_buttons.append(InlineKeyboardButton("➡️ التالي", callback_data=f'{prefix}_page_{page+1}'))
         
         keyboard.append(nav_buttons)
     
@@ -1157,8 +1157,15 @@ async def handle_page_navigation(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
     
-    callback_parts = query.data.split(":")
-    page = int(callback_parts[1])
+    # تحسين تحليل البيانات لدعم كل من : و _
+    if ':' in query.data:
+        callback_parts = query.data.split(":")
+        page = int(callback_parts[1])
+    elif '_page_' in query.data:
+        callback_parts = query.data.split("_page_")
+        page = int(callback_parts[1])
+    else:
+        page = 0
     
     if "start_neighborhood_page" in query.data:
         neighborhoods = list(neighborhood_data.keys())
